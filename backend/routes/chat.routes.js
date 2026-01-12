@@ -1,4 +1,3 @@
-// chat.routes.js
 import express from "express";
 import { pool } from "../db.js";
 import { callLLM } from "../services/llm.service.js";
@@ -15,19 +14,18 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // ✅ Fetch EXACT document by ID
     const result = await pool.query(
       "SELECT content FROM documents WHERE id = $1",
       [documentId]
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({
-        error: "Document not found"
-      });
+      return res.status(404).json({ error: "Document not found" });
     }
 
-    const context = result.rows[0].content;
+    // ✅ LIMIT context size (CRITICAL FIX)
+    const MAX_CHARS = 6000;
+    const context = result.rows[0].content.slice(0, MAX_CHARS);
 
     const prompt = `
 You are an assistant answering questions strictly based on the document below.
@@ -42,13 +40,10 @@ Answer clearly.
 `;
 
     const answer = await callLLM(prompt);
-
     res.json({ answer });
   } catch (err) {
     console.error("Chat error:", err);
-    res.status(500).json({
-      error: "Chat failed"
-    });
+    res.status(500).json({ error: "Chat failed" });
   }
 });
 
