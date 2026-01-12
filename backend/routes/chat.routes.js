@@ -15,7 +15,7 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // 1️⃣ Fetch document content directly from DB
+    // ✅ Fetch EXACT document by ID
     const result = await pool.query(
       "SELECT content FROM documents WHERE id = $1",
       [documentId]
@@ -29,9 +29,8 @@ router.post("/", async (req, res) => {
 
     const context = result.rows[0].content;
 
-    // 2️⃣ Build prompt
     const prompt = `
-You are an assistant answering questions using ONLY the document below.
+You are an assistant answering questions strictly based on the document below.
 
 Document:
 ${context}
@@ -39,16 +38,17 @@ ${context}
 Question:
 ${question}
 
-Answer clearly and concisely.
+Answer clearly.
 `;
 
-    // 3️⃣ Call LLM
     const answer = await callLLM(prompt);
 
     res.json({ answer });
   } catch (err) {
     console.error("Chat error:", err);
-    res.status(500).json({ error: "Chat failed" });
+    res.status(500).json({
+      error: "Chat failed"
+    });
   }
 });
 
