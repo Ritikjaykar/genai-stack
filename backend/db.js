@@ -3,10 +3,15 @@ const { Pool } = pkg;
 
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
-pool
-  .connect()
-  .then(() => console.log("✅ DB connected"))
-  .catch(err => console.error("❌ DB error", err));
+pool.on("connect", () => {
+  console.log("✅ DB connected");
+});
+
+pool.on("error", (err) => {
+  console.error("❌ DB pool error:", err.message);
+});
