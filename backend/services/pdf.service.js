@@ -1,24 +1,20 @@
 import fs from "fs";
-import pdf from "pdf-parse";
+import pdfParse from "pdf-parse";
 
-/**
- * Extract text from uploaded PDF
- * @param {string} filePath - path from multer
- */
 export async function extractTextFromPDF(filePath) {
   try {
-    // 1️ Read file as BUFFER (CRITICAL)
-    const dataBuffer = fs.readFileSync(filePath);
+    // Read PDF as buffer
+    const buffer = fs.readFileSync(filePath);
 
-    // 2️ Pass buffer to pdf-parse
-    const data = await pdf(dataBuffer);
+    // Parse PDF
+    const data = await pdfParse(buffer);
 
-    // 3️.Cleanup uploaded file (optional but good practice)
-    fs.unlink(filePath, () => {});
+    // Cleanup uploaded file
+    fs.unlinkSync(filePath);
 
     return data.text;
-  } catch (error) {
-    console.error("PDF extraction error:", error);
-    throw new Error("PDF extraction failed");
+  } catch (err) {
+    console.error("❌ PDF parse failed:", err);
+    throw new Error("PDF processing failed");
   }
 }
