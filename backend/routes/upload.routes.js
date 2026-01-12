@@ -2,25 +2,21 @@ import express from "express";
 import multer from "multer";
 import { extractTextFromPDF } from "../services/pdf.service.js";
 import { pool } from "../db.js";
-import { ensureCollection, addEmbedding } from "../services/chroma.service.js";
-import { embedText } from "../services/embedding.service.js";
 
-const router = express.Router();
-
-/**
- * IMPORTANT:
- * Use memoryStorage for Railway / cloud
- */
+// 🔹 Use memory storage (IMPORTANT)
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB
-  }
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB
 });
+
+const router = express.Router();
 
 router.post("/pdf", upload.single("file"), async (req, res) => {
   try {
     const { stackId } = req.body;
+
+    console.log("📄 File:", req.file?.originalname);
+    console.log("🧩 Stack ID:", stackId);
 
     if (!req.file || !stackId) {
       return res.status(400).json({
@@ -28,19 +24,10 @@ router.post("/pdf", upload.single("file"), async (req, res) => {
       });
     }
 
-    console.log("📄 PDF received:", req.file.originalname);
-    console.log("🧩 Stack ID:", stackId);
-
-    // 1️⃣ Extract text FROM BUFFER
+    // 1️⃣ Extract text from buffer
     const text = await extractTextFromPDF(req.file.buffer);
 
-    if (!text || text.trim().length === 0) {
-      throw new Error("Extracted text is empty");
-    }
-
-    console.log("📝 Extracted text length:", text.length);
-
-    // 2️⃣ Store in PostgreSQL
+    // 2️⃣ Save to DB
     const result = await pool.query(
       `
       INSERT INTO documents (filename, content, stack_id)
@@ -52,24 +39,9 @@ router.post("/pdf", upload.single("file"), async (req, res) => {
 
     const documentId = result.rows[0].id;
 
-    console.log("🗄️ Document saved with ID:", documentId);
+    console.log("✅ Document saved:", documentId);
 
-    // 3️⃣ ChromaDB (minimal, safe)
-    await ensureCollection();
-
-    const embedding = await embedText(text);
-
-    await addEmbedding({
-      id: documentId,
-      embedding,
-      document: text,
-      metadata: {
-        filename: req.file.originalname,
-        stackId
-      }
-    });
-
-    // 4️⃣ Respond
+    // 3️⃣ Respond
     res.json({ documentId });
   } catch (err) {
     console.error("❌ Upload error:", err);
