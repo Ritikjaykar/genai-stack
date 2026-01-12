@@ -1,11 +1,8 @@
 import fs from "fs";
+import pdfParse from "pdf-parse";
 
 export async function extractTextFromPDF(filePath) {
-  //  dynamic import FIX for pdf-parse
-  const pdfParse = (await import("pdf-parse")).default;
-
-  const dataBuffer = fs.readFileSync(filePath);
-  const data = await pdfParse(dataBuffer);
-
+  const buffer = fs.readFileSync(filePath);
+  const data = await pdfParse(buffer);
   return data.text;
 }
