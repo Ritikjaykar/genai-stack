@@ -1,24 +1,18 @@
-import pkg from "pg";
-const { Pool } = pkg;
+import pg from "pg";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-/**
- * Railway provides DATABASE_URL automatically
- * Local/dev can still use individual vars
- */
+const { Pool } = pg;
 
-const pool = new Pool({
+export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL
+  ssl: process.env.NODE_ENV === "production"
     ? { rejectUnauthorized: false }
     : false
 });
 
-// Test connection once at startup
+// Health check
 pool.query("SELECT 1")
   .then(() => console.log("✅ DB connected"))
-  .catch((err) => console.error("❌ DB error", err));
-
-export { pool };
+  .catch(err => console.error("❌ DB error", err));
