@@ -1,4 +1,6 @@
+//ComponentNode.jsx
 import { Settings, Upload } from "lucide-react";
+import api from "../services/api";
 
 export default function ComponentNode({ type, position, onPDFReady }) {
   const configs = {
@@ -30,27 +32,19 @@ export default function ComponentNode({ type, position, onPDFReady }) {
   async function handlePDFUpload(file) {
     const formData = new FormData();
     formData.append("file", file);
-
+  
     try {
-      const res = await fetch("http://localhost:8000/api/upload/pdf", {
-        method: "POST",
-        body: formData
-      });
-
-      const data = await res.json();
-
-      // Store documentId
-      localStorage.setItem("documentId", data.documentId);
-
-      // Notify parent (Builder)
+      const res = await api.post("/upload/pdf", formData);
+      localStorage.setItem("documentId", res.data.documentId);
+  
       if (onPDFReady) onPDFReady();
-
-      alert("PDF uploaded successfully. You can now chat.");
+  
+      alert("PDF uploaded successfully");
     } catch (err) {
-      console.error("PDF upload error:", err);
       alert("PDF upload failed");
     }
   }
+  
 
   return (
     <div

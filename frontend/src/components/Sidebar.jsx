@@ -1,3 +1,4 @@
+//Sidebar.jsx
 import { ArrowLeft } from "lucide-react";
 
 export default function Sidebar({ onBack }) {

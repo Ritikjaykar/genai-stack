@@ -1,4 +1,5 @@
 import { useState } from "react";
+import api from "../services/api";
 
 export default function ChatModal({ onClose }) {
   const [input, setInput] = useState("");
@@ -10,21 +11,25 @@ export default function ChatModal({ onClose }) {
 
     const documentId = localStorage.getItem("documentId");
 
+    if (!documentId) {
+      alert("No document selected");
+      return;
+    }
+
     setMessages((m) => [...m, { role: "user", text: input }]);
     setLoading(true);
 
-    const res = await fetch("http://localhost:8000/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    try {
+      const res = await api.post("/chat", {
         documentId,
         question: input
-      })
-    });
+      });
 
-    const data = await res.json();
+      setMessages((m) => [...m, { role: "ai", text: res.data.answer }]);
+    } catch (err) {
+      alert("Chat failed");
+    }
 
-    setMessages((m) => [...m, { role: "ai", text: data.answer }]);
     setInput("");
     setLoading(false);
   }

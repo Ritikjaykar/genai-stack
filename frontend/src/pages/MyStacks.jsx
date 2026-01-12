@@ -1,8 +1,7 @@
+//MyStacks.jsx
 import { useState } from "react";
 import CreateStackModal from "../components/CreateStackModal";
 import Builder from "./Builder";
-
-
 
 export default function MyStacks() {
   const [stacks, setStacks] = useState([]);

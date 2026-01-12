@@ -1,24 +1,25 @@
 import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import ChatModal from "../components/ChatModal";
+import api from "../services/api";
 
 export default function Builder({ stack, onBack }) {
   const [documents, setDocuments] = useState([]);
   const [showChat, setShowChat] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   /* ---------------- Fetch documents ---------------- */
 
   useEffect(() => {
-    if (stack?.id) fetchDocuments();
+    if (stack?.id) {
+      fetchDocuments();
+    }
   }, [stack]);
 
   async function fetchDocuments() {
     try {
-      const res = await fetch(
-        `http://localhost:8000/api/documents/${stack.id}`
-      );
-      const data = await res.json();
-      setDocuments(Array.isArray(data) ? data : []);
+      const res = await api.get(`/documents/${stack.id}`);
+      setDocuments(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error("Fetch documents failed", err);
       setDocuments([]);
@@ -28,38 +29,41 @@ export default function Builder({ stack, onBack }) {
   /* ---------------- Upload PDF ---------------- */
 
   async function handleUpload(file) {
+    if (!file) return;
+
     const formData = new FormData();
     formData.append("file", file);
     formData.append("stackId", stack.id);
 
-    try {
-      const res = await fetch("http://localhost:8000/api/upload/pdf", {
-        method: "POST",
-        body: formData
-      });
+    setLoading(true);
 
-      const data = await res.json();
-      localStorage.setItem("documentId", data.documentId);
+    try {
+      const res = await api.post("/upload/pdf", formData);
+      localStorage.setItem("documentId", res.data.documentId);
       fetchDocuments();
+      alert("PDF uploaded successfully");
     } catch (err) {
       console.error("Upload failed", err);
+      alert("PDF upload failed");
     }
+
+    setLoading(false);
   }
 
   /* ---------------- Delete document ---------------- */
 
   async function deleteDocument(id) {
     try {
-      await fetch(`http://localhost:8000/api/documents/${id}`, {
-        method: "DELETE"
-      });
+      await api.delete(`/documents/${id}`);
       fetchDocuments();
     } catch (err) {
       console.error("Delete failed", err);
     }
   }
 
-  if (!stack) return <div className="p-10">No stack selected</div>;
+  if (!stack) {
+    return <div className="p-10">No stack selected</div>;
+  }
 
   return (
     <div className="h-screen flex flex-col">
@@ -73,7 +77,7 @@ export default function Builder({ stack, onBack }) {
       </header>
 
       <div className="flex flex-1">
-        {/* Sidebar with BACK ICON */}
+        {/* Sidebar */}
         <Sidebar onBack={onBack} />
 
         {/* Main content */}
@@ -81,13 +85,14 @@ export default function Builder({ stack, onBack }) {
           {/* Upload box */}
           <label className="max-w-xl mx-auto flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-10 bg-white cursor-pointer">
             <span className="text-gray-700">
-              Click or drag PDF to upload
+              {loading ? "Uploading..." : "Click or drag PDF to upload"}
             </span>
 
             <input
               type="file"
               accept=".pdf"
               className="hidden"
+              disabled={loading}
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) handleUpload(file);

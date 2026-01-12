@@ -1,3 +1,4 @@
+//canvas.jsx
 import ComponentNode from "./ComponentNode";
 
 export default function Canvas({ nodes, onPDFReady }) {
