@@ -6,7 +6,17 @@ import { ensureCollection, addEmbedding } from "../services/chroma.service.js";
 import { embedText } from "../services/embedding.service.js";
 
 const router = express.Router();
-const upload = multer({ dest: "uploads/" });
+
+/**
+ * IMPORTANT:
+ * Use memoryStorage for Railway / cloud
+ */
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB
+  }
+});
 
 router.post("/pdf", upload.single("file"), async (req, res) => {
   try {
@@ -18,10 +28,19 @@ router.post("/pdf", upload.single("file"), async (req, res) => {
       });
     }
 
-    // 1️. Extract text
-    const text = await extractTextFromPDF(req.file.path);
+    console.log("📄 PDF received:", req.file.originalname);
+    console.log("🧩 Stack ID:", stackId);
 
-    // 2️. Store in PostgreSQL
+    // 1️⃣ Extract text FROM BUFFER
+    const text = await extractTextFromPDF(req.file.buffer);
+
+    if (!text || text.trim().length === 0) {
+      throw new Error("Extracted text is empty");
+    }
+
+    console.log("📝 Extracted text length:", text.length);
+
+    // 2️⃣ Store in PostgreSQL
     const result = await pool.query(
       `
       INSERT INTO documents (filename, content, stack_id)
@@ -33,10 +52,12 @@ router.post("/pdf", upload.single("file"), async (req, res) => {
 
     const documentId = result.rows[0].id;
 
-    // 3️. Store embedding in Chroma (MINIMAL usage)
+    console.log("🗄️ Document saved with ID:", documentId);
+
+    // 3️⃣ ChromaDB (minimal, safe)
     await ensureCollection();
 
-    const embedding = embedText(text);
+    const embedding = await embedText(text);
 
     await addEmbedding({
       id: documentId,
@@ -48,10 +69,10 @@ router.post("/pdf", upload.single("file"), async (req, res) => {
       }
     });
 
-    // 4️. Respond
+    // 4️⃣ Respond
     res.json({ documentId });
   } catch (err) {
-    console.error("Upload error:", err);
+    console.error("❌ Upload error:", err);
     res.status(500).json({
       error: "PDF processing failed"
     });
