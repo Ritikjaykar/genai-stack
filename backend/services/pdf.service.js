@@ -1,17 +1,11 @@
 import fs from "fs";
-import pdfParse from "pdf-parse/lib/pdf-parse.js";
 
 export async function extractTextFromPDF(filePath) {
-  try {
-    const buffer = fs.readFileSync(filePath);
-    const data = await pdfParse(buffer);
+  //  dynamic import FIX for pdf-parse
+  const pdfParse = (await import("pdf-parse")).default;
 
-    // remove temp upload
-    fs.unlinkSync(filePath);
+  const dataBuffer = fs.readFileSync(filePath);
+  const data = await pdfParse(dataBuffer);
 
-    return data.text;
-  } catch (err) {
-    console.error("❌ PDF parse failed:", err);
-    throw err;
-  }
+  return data.text;
 }
