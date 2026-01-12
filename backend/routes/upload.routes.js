@@ -3,31 +3,40 @@ import multer from "multer";
 import { extractTextFromPDF } from "../services/pdf.service.js";
 import { pool } from "../db.js";
 
-// 🔹 Use memory storage (IMPORTANT)
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB
-});
+// ❌ DO NOT import chroma in production
+// import { ensureCollection, addEmbedding } from "../services/chroma.service.js";
+// import { embedText } from "../services/embedding.service.js";
 
 const router = express.Router();
+const upload = multer({ dest: "uploads/" });
 
 router.post("/pdf", upload.single("file"), async (req, res) => {
   try {
     const { stackId } = req.body;
 
-    console.log("📄 File:", req.file?.originalname);
-    console.log("🧩 Stack ID:", stackId);
+    // 1️⃣ Validate input
+    if (!req.file) {
+      return res.status(400).json({ error: "File missing" });
+    }
 
-    if (!req.file || !stackId) {
+    if (!stackId) {
+      return res.status(400).json({ error: "stackId missing" });
+    }
+
+    // 2️⃣ Validate UUID format (VERY IMPORTANT)
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+    if (!uuidRegex.test(stackId)) {
       return res.status(400).json({
-        error: "File or stackId missing"
+        error: "Invalid stackId (must be UUID)"
       });
     }
 
-    // 1️⃣ Extract text from buffer
-    const text = await extractTextFromPDF(req.file.buffer);
+    // 3️⃣ Extract text
+    const text = await extractTextFromPDF(req.file.path);
 
-    // 2️⃣ Save to DB
+    // 4️⃣ Store in PostgreSQL
     const result = await pool.query(
       `
       INSERT INTO documents (filename, content, stack_id)
@@ -39,12 +48,29 @@ router.post("/pdf", upload.single("file"), async (req, res) => {
 
     const documentId = result.rows[0].id;
 
-    console.log("✅ Document saved:", documentId);
+    // 5️⃣ (OPTIONAL) ChromaDB — disabled on Railway
+    /*
+    if (process.env.ENABLE_CHROMA === "true") {
+      await ensureCollection("documents");
+      const embedding = embedText(text);
 
-    // 3️⃣ Respond
-    res.json({ documentId });
+      await addEmbedding({
+        collection: "documents",
+        id: documentId,
+        embedding,
+        document: text,
+        metadata: { filename: req.file.originalname, stackId }
+      });
+    }
+    */
+
+    // 6️⃣ Respond success
+    res.json({
+      success: true,
+      documentId
+    });
   } catch (err) {
-    console.error("❌ Upload error:", err);
+    console.error("Upload error:", err);
     res.status(500).json({
       error: "PDF processing failed"
     });

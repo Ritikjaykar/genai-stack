@@ -7,3 +7,11 @@ export const pool = new Pool({
     rejectUnauthorized: false
   }
 });
+
+pool.on("connect", () => {
+  console.log("✅ DB connected");
+});
+
+pool.on("error", (err) => {
+  console.error("❌ Unexpected DB error", err);
+});
