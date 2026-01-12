@@ -1,3 +1,4 @@
+//chat.routes.js
 import express from "express";
 import { pool } from "../db.js";
 import { embedText } from "../services/embedding.service.js";

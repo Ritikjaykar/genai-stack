@@ -1,3 +1,4 @@
+//embedding.service.js
 /**
  * Very simple deterministic embedding
  * (Assessment-safe, no external API)
